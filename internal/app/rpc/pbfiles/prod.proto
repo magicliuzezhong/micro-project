@@ -1,0 +1,13 @@
+syntax="proto3";
+package services;
+option go_package ="/";
+message ProdRequest {
+    int32 pro_id=1;
+}
+message ProdResponse {
+    int32 pro_stock=1;
+}
+
+service ProdService {
+    rpc pro_service(ProdRequest) returns (ProdResponse);
+}

@@ -1,0 +1,25 @@
+server:
+  port: 8080 #微服务端口
+  server_name: userService #微服务名称
+consul:
+  ip: 127.0.0.1 #注册中心地址
+  port: 8500 #注册中心端口
+  tag: userService #服务标签
+  weight: 1 #权重，使用加权轮询时需要使用此项
+jeager:
+  enabled: true #是否启用jeager全链路追踪 true：启用，否则都是不启用
+  url: 127.0.0.1:6831 #jeager地址
+  type: const # const 固定采样
+  param: 1 # 1:全采样，0:不采样
+db:
+  mysql:
+    url: 10.0.0.133:3326 #mysql地址
+    username: root #账号
+    password: root #密码
+    schema: test #缺省schema
+    max_idle_conn: 10 #最大闲置连接
+    max_open_conn: 100 #最大打开连接
+    log_path: ./log/common/mysql.log #执行sql后的日志记录路径
+  redis: #暂时没有使用哦
+    url: 127.0.0.1:2379  #暂时没有使用哦
+    password: 1234.abcd #暂时没有使用哦
