@@ -11,7 +11,6 @@ import (
 	irisContext "github.com/kataras/iris/v12/context"
 	"micro-project/internal/app/service_impl"
 	"micro-project/internal/pkg/balance"
-	"micro-project/internal/pkg/db/mysql"
 )
 
 var services = service_impl.NewTestService()
@@ -26,36 +25,11 @@ type Test struct {
 	Age int `json:"age"`
 }
 
-type T1 struct {
-	A int    `json:"a"`
-	B string `json:"b"`
-}
-
 type TestController struct {
 	Ctx irisContext.Context
 }
 
 func (c TestController) GetName() string {
-	var conn = mysql.GetConn()
-	fmt.Println(conn)
-	var t1 = T1{}
-	conn.Table("t1").First(&t1, "a=1")
-
-	var t1Data = &T1{
-		A: 1,
-		B: "测试两下",
-	}
-	conn.Create(t1Data)
-	var datas = []T1{
-		T1{A: 2, B: "bbb"},
-		T1{A: 3, B: "bbb1"},
-		T1{A: 4, B: "bbb2"},
-		T1{A: 5, B: "bbb3"},
-		T1{A: 6, B: "bbb4"},
-	}
-	conn.Create(&datas)
-
-	fmt.Println(t1)
 	defer c.Ctx.Next()
 	//var userServices = discover.DiscoverServices("userServic1")
 	//var userService, err = balances.DoBalance(userServices, "userServic1", "10.0.10.253")

@@ -72,9 +72,12 @@ func mysqlExplore() {
 		case <-exitExploreCh:
 			<-waitExploreCh
 		case <-time.After(time.Second * 10):
+			//此处需要进行加锁操作，因为如果mysql正在进行切换的时候dbs被置为nil了的话，此处会出现报错的问题
+			initMysqlMutex.Lock()
 			if dbs != nil {
 				var dbSql, err = dbs.DB()
 				if err != nil {
+					initMysqlMutex.Unlock()
 					continue
 				}
 				err = dbSql.Ping()
@@ -82,6 +85,7 @@ func mysqlExplore() {
 					util.GetLogger().Info("====mysql探活====")
 				}
 			}
+			initMysqlMutex.Unlock()
 		}
 	}
 }
@@ -91,11 +95,11 @@ func mysqlExplore() {
 // @Description: 初始化mysqlDB
 //
 func initMysqlDB() {
+	initMysqlMutex.Lock()
+	defer initMysqlMutex.Unlock()
 	if len(exitExploreCh) == 0 {
 		exitExploreCh <- true
 	}
-	initMysqlMutex.Lock()
-	defer initMysqlMutex.Unlock()
 	dbs = nil
 	dbInitError = nil
 	var mysqlInfo = util.GetApplication().DBInfo.Mysql

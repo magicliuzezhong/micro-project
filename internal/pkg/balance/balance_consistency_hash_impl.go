@@ -19,51 +19,28 @@ import (
 // ConsistencyHashBalance
 // @Description: 一致性hash负载均衡实现
 //
-type ConsistencyHashBalance struct {
+type consistencyHashBalance struct {
 	hashRingMap map[string]*HashRing                          //hash环映射
 	nodeMap     map[string]map[string]*common.ServiceInstance //快速映射具体实例
 }
 
 var onceConsistencyHashBalance sync.Once
 
-var balance *ConsistencyHashBalance
+var balance *consistencyHashBalance
 
 //
 // NewConsistencyHashBalance
 // @Description: 一致性hash负载均衡算法由此调用
-// @param serviceName 服务名称
-// @param instances 实例
 // @return ILoadBalance 负载均衡接口
 //
-func NewConsistencyHashBalance(serviceName string, instances []*common.ServiceInstance) ILoadBalance {
+func NewConsistencyHashBalance() ILoadBalance {
 	onceConsistencyHashBalance.Do(func() {
-		balance = &ConsistencyHashBalance{
+		balance = &consistencyHashBalance{
 			hashRingMap: make(map[string]*HashRing),
 			nodeMap:     make(map[string]map[string]*common.ServiceInstance),
 		}
 	})
-	_ = balance.RegisterServiceInstance(serviceName, instances)
 	return balance
-}
-
-func (c *ConsistencyHashBalance) RegisterServiceInstance(serviceName string, instances []*common.ServiceInstance) error {
-	if _, ok := c.hashRingMap[serviceName]; ok { //已经注册过了
-		return errors.New("该实例已注册")
-	}
-	var instanceLen = len(instances)
-	if instanceLen == 0 {
-		return errors.New("服务实例为空")
-	}
-	var nodes = make([]string, instanceLen)
-	var serviceInstanceMap = make(map[string]*common.ServiceInstance)
-	for i := 0; i < instanceLen; i++ {
-		var url = instances[i].GetUrl()
-		nodes[i] = url
-		serviceInstanceMap[url] = instances[i]
-	}
-	c.nodeMap[serviceName] = serviceInstanceMap
-	c.hashRingMap[serviceName] = newHashRing(nodes, 32) //实例化节点，并且使用32个虚拟节点
-	return nil
 }
 
 //
@@ -74,23 +51,70 @@ func (c *ConsistencyHashBalance) RegisterServiceInstance(serviceName string, ins
 // @return *common.ServiceInstance 返回实例
 // @return error 错误
 //
-func (c *ConsistencyHashBalance) DoBalance(instances []*common.ServiceInstance,
+func (c *consistencyHashBalance) DoBalance(instances []*common.ServiceInstance,
 	keys ...string) (*common.ServiceInstance, error) {
+	if c.hashRingMap == nil || c.nodeMap == nil {
+		return nil, errors.New("参数实例化异常")
+	}
 	if len(keys) != 2 {
 		return nil, errors.New("参数有误")
 	}
 	var serviceName = keys[0]
 	var key = keys[1]
-	if _, ok := c.hashRingMap[serviceName]; !ok { //已经注册过了
-		return nil, errors.New("服务实例未映射")
+	var insLen = len(instances)
+	if _, ok := c.hashRingMap[serviceName]; !ok { //如果不存在那么进行实例化
+		c.hashRingMap[serviceName] = newHashRing(make([]string, 0), 32)
 	}
-	var instanceLen = len(instances)
-	if instanceLen == 0 { //清空之前个实例映射，解除关系引用等待垃圾回收
-		delete(c.hashRingMap, serviceName)
+	if _, ok := c.nodeMap[serviceName]; !ok { //如果node不存在，创建一个
+		c.nodeMap[serviceName] = make(map[string]*common.ServiceInstance)
+	}
+	if insLen == 0 { //传入的实例为空，清空HashRing的数据
 		delete(c.nodeMap, serviceName)
-		return nil, errors.New("服务实例为空")
+		delete(c.hashRingMap, serviceName)
+		return nil, errors.New("传入实例为空")
+	}
+	originalNoeMap, ok := c.nodeMap[serviceName]     // 第一步 进行传入数据检查
+	var addNode = make([]*common.ServiceInstance, 0) //新增的节点
+	var delNode = make([]string, 0)                  //删除了的节点
+	if !ok || len(originalNoeMap) == 0 {             //该步骤说明数据不存在，全部进行新增即可
+		for _, instance := range instances {
+			addNode = append(addNode, instance)
+		}
+	} else { //该步骤说明数据存在
+		var newInstances = make(map[string]bool, 0) //映射所有的新节点
+		for _, instance := range instances {
+			newInstances[instance.GetUrl()] = true
+		}
+		for _, instance := range instances {
+			var url = instance.GetUrl()
+			if _, ok := originalNoeMap[url]; ok { //如果实例不存在，那么说明是新增的节点
+				addNode = append(addNode, instance)
+			}
+		}
+		for key, _ := range originalNoeMap {
+			if _, ok := newInstances[key]; !ok { //说明已经包含了
+				delNode = append(delNode, key)
+			}
+		}
 	}
 	var hashRing = c.hashRingMap[serviceName]
+	var recordNode = c.nodeMap[serviceName]
+	if len(delNode) > 0 {
+		for _, node := range delNode {
+			hashRing.removeNode(node)
+			delete(recordNode, node)
+		}
+	}
+	if len(addNode) > 0 {
+		for _, instance := range addNode {
+			var url = instance.GetUrl()
+			hashRing.addNode(url)
+			recordNode[url] = instance
+		}
+	}
+	if hashRing == nil { //没有被注册
+		return nil, errors.New("服务实例未映射")
+	}
 	var serviceInstanceUrl = hashRing.getNode(key)
 	if instance, ok := c.nodeMap[serviceName][serviceInstanceUrl]; ok {
 		return instance, nil
