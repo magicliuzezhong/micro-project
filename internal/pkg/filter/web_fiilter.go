@@ -7,13 +7,17 @@
 package filter
 
 import (
-	"encoding/json"
 	"github.com/kataras/iris/v12/context"
 	"golang.org/x/time/rate"
 	"micro-project/internal/pkg/common"
 )
 
-var rateLimiter = rate.NewLimiter(5000, 20000)
+//
+// @Description: 限流器（令牌桶算法）
+// @param 5000 每秒添加5000个令牌
+// @param 20000 总计令牌数
+//
+var rateLimiter = rate.NewLimiter(1, 5)
 
 //
 // LimiterFilter
@@ -22,14 +26,12 @@ var rateLimiter = rate.NewLimiter(5000, 20000)
 //
 func LimiterFilter(context context.Context) {
 	if !rateLimiter.Allow() {
-		var response = context.ResponseWriter()
-		var resultStr, _ = json.Marshal(common.ResponseResult{
+		context.Values().Set("val", common.ResponseResult{
 			Status: 429,
 			Msg:    "请求过多，请稍后重试",
 			Data:   "",
 		})
-		response.Write(resultStr)
-		response.WriteHeader(429)
+		context.StatusCode(429)
 		context.StopExecution()
 		return
 	}

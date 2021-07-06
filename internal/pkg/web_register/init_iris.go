@@ -7,10 +7,8 @@
 package web_register
 
 import (
-	"fmt"
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/context"
-	"github.com/kataras/iris/v12/middleware/recover"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"micro-project/internal/pkg/filter"
 	"micro-project/internal/pkg/jeager"
@@ -24,16 +22,10 @@ import (
 //
 func InitWeb(exitCallback func(), extend func(application *iris.Application)) {
 	app := iris.New()
-	app.Use(recover.New())            //注册iris panic恢复
+	app.Use(customRecover)            //注册服务恢复逻辑，全局数据类型统一格式返回
 	app.Use(filter.LimiterFilter)     //注册限流器
 	app.Use(filter.WebFilter)         //注册web拦截器
 	app.Use(jeager.JeagerTraceFilter) //注册jeager全链路追踪器
-	app.Done(func(ctx context.Context) {
-		var body, _ = ctx.GetBody()
-		var record = ctx.Recorder()
-		fmt.Printf("body：%s\n", body)
-		fmt.Printf("record：%s\n", record.Body())
-	})
 
 	app.Handle("GET", "/health", func(context context.Context) {
 		_, _ = context.ResponseWriter().Write([]byte(`{"status": "ok"}`))

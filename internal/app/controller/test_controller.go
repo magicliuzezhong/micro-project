@@ -11,6 +11,7 @@ import (
 	irisContext "github.com/kataras/iris/v12/context"
 	"micro-project/internal/app/service_impl"
 	"micro-project/internal/pkg/balance"
+	"micro-project/internal/pkg/common"
 	"micro-project/internal/pkg/discover"
 )
 
@@ -30,7 +31,7 @@ type TestController struct {
 	Ctx irisContext.Context
 }
 
-func (c TestController) GetName() string {
+func (c TestController) GetName() {
 	defer c.Ctx.Next()
 	var userServices = discover.DiscoverServices("userService1")
 	var userService, err = balances.DoBalance(userServices, "userService1", "10.0.10.253")
@@ -51,23 +52,33 @@ func (c TestController) GetName() string {
 		//body, _ := ioutil.ReadAll(resp.Body)
 		//fmt.Println(string(body))
 	}
+	panic("测试异常")
 
 	//var name = services.GetName("陆小凤")
 	//fmt.Println(name)
 	//return name
-	return "测试一下"
+	c.Ctx.Values().Set("val", "测试一下")
 }
 
-func (c TestController) GetAge() Test {
+func (c TestController) GetAge() {
 	var age = services.GetAge("18")
-	fmt.Println(age)
 	defer c.Ctx.Next()
-	return Test{
+	c.Ctx.Values().Set("val", Test{
 		Age: age,
-	}
+	})
+
+	c.Ctx.Values().Set("val", common.ResponseResult{
+		Status: 200,
+		Msg:    "我个人测试的请求",
+		Data:   age,
+	})
 }
 
-func (c TestController) GetAbc() []Test {
+func (c TestController) GetBbb() string {
+	return "西门吹雪"
+}
+
+func (c TestController) GetAbc() {
 	var result = make([]Test, 0)
 	result = append(result, Test{
 		Age: 18,
@@ -78,5 +89,10 @@ func (c TestController) GetAbc() []Test {
 	result = append(result, Test{
 		Age: 20,
 	})
-	return result
+	defer c.Ctx.Next()
+	c.Ctx.Values().Set("val", result)
+}
+
+func (c TestController) GetCba() {
+
 }
