@@ -11,15 +11,16 @@ import (
 	irisContext "github.com/kataras/iris/v12/context"
 	"micro-project/internal/app/service_impl"
 	"micro-project/internal/pkg/balance"
+	"micro-project/internal/pkg/discover"
 )
 
 var services = service_impl.NewTestService()
 
-var balances balance.ILoadBalance = balance.RandomBalance{}
-
-//var balances balance.ILoadBalance = balance.HashBalance{}
-//var balances balance.ILoadBalance = &balance.RoundRobinBalance{}
-//var balances balance.ILoadBalance = &balance.WeightRoundRobinBalance{}
+//var balances = balance.NewConsistencyHashBalance()
+//var balances = balance.NewHashBalance()
+//var balances = balance.NewRandomBalance()
+//var balances = balance.NewRoundRobinBalance()
+var balances = balance.NewRoundRobinWeightBalance()
 
 type Test struct {
 	Age int `json:"age"`
@@ -31,33 +32,30 @@ type TestController struct {
 
 func (c TestController) GetName() string {
 	defer c.Ctx.Next()
-	//var userServices = discover.DiscoverServices("userServic1")
-	//var userService, err = balances.DoBalance(userServices, "userServic1", "10.0.10.253")
-	//if err != nil {
-	//	fmt.Println("出现错误，", err.Error())
-	//} else {
-	//	fmt.Println(userService.GetUrl())
-	//}
+	var userServices = discover.DiscoverServices("userService1")
+	var userService, err = balances.DoBalance(userServices, "userService1", "10.0.10.253")
+	if err != nil {
+		fmt.Println("出现错误，", err.Error())
+	} else {
+		fmt.Println(userService.GetUrl())
+		var httpUrl = userService.GetUrl() + "/test/name"
+		fmt.Println("获取到的url：", httpUrl)
+		//client := &http.Client{}
+		//req, _ := http.NewRequest("GET", httpUrl, nil)
+		//req.Header = c.Ctx.Request().Header
+		//req.Header.Set("Uber-Trace-Id", c.Ctx.Request().Header.Get("Uber-Trace-Id"))
+		//
+		//// 发送请求
+		//resp, _ := client.Do(req)
+		//defer resp.Body.Close()
+		//body, _ := ioutil.ReadAll(resp.Body)
+		//fmt.Println(string(body))
+	}
 
-	//for _, service := range userService {
-	//	//fmt.Println(service)
-	//	var httpUrl = "http://" + service.Host + ":" + strconv.Itoa(service.Port) + "/test/name"
-	//
-	//	client := &http.Client{}
-	//	req, _ := http.NewRequest("GET", httpUrl, nil)
-	//	req.Header = c.Ctx.Request().Header
-	//	req.Header.Set("Uber-Trace-Id", c.Ctx.Request().Header.Get("Uber-Trace-Id"))
-	//
-	//	// 发送请求
-	//	resp, _ := client.Do(req)
-	//	defer resp.Body.Close()
-	//	body, _ := ioutil.ReadAll(resp.Body)
-	//	fmt.Println(string(body))
-	//}
-
-	var name = services.GetName("陆小凤")
-	fmt.Println(name)
-	return name
+	//var name = services.GetName("陆小凤")
+	//fmt.Println(name)
+	//return name
+	return "测试一下"
 }
 
 func (c TestController) GetAge() Test {

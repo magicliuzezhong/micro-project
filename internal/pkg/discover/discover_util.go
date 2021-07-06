@@ -36,8 +36,8 @@ var registerOnce sync.Once
 func getDiscoverClient() IDiscoveryClient {
 	getDiscoverOnce.Do(func() {
 		var application = util.GetApplication()
-		var ip = application.ConsulConf.Ip
-		var port, _ = strconv.Atoi(application.ConsulConf.Port)
+		var ip = application.DiscoverConf.ConsulConf.Ip
+		var port, _ = strconv.Atoi(application.DiscoverConf.ConsulConf.Port)
 		discoverClient = NewConsulDiscoverClient(ip, port)
 	})
 	return discoverClient
@@ -50,12 +50,11 @@ func getDiscoverClient() IDiscoveryClient {
 func Register() {
 	registerOnce.Do(func() {
 		var application = util.GetApplication()
-		var ip = application.ConsulConf.Ip
-		//var port, _ = strconv.Atoi(application.ConsulConf.Port)
+		var ip = application.DiscoverConf.ConsulConf.Ip
 		var port, _ = strconv.Atoi(application.Server.Port)
-		var tags = []string{application.ConsulConf.Tag}
+		var tags = []string{application.DiscoverConf.ConsulConf.Tag}
 		var serviceName = application.Server.ServerName
-		var serviceWeight, _ = strconv.Atoi(application.ConsulConf.Weight)
+		var serviceWeight, _ = strconv.Atoi(application.DiscoverConf.ConsulConf.Weight)
 		var registerStatus = getDiscoverClient().Register(ip, port, serviceName, serviceWeight, nil, tags)
 		if !registerStatus {
 			panic("程序注册失败")

@@ -9,26 +9,49 @@ package balance
 import (
 	"fmt"
 	"micro-project/internal/pkg/common"
+	"sync"
 )
 
 //
-// WeightRoundRobinBalance
+// weightRoundRobinBalance
 // @Description: 加权轮询
 //
-type WeightRoundRobinBalance struct {
+type weightRoundRobinBalance struct {
 	Index  int64
 	Weight int64
 }
 
 //
+// @Description: 单例
+//
+var weightRoundRobinBalanceOnce sync.Once
+
+//
+// @Description: 实例
+//
+var weightRoundRobinBalanceInstance *weightRoundRobinBalance
+
+//
+// NewRoundRobinWeightBalance
+// @Description: 获取加权轮询实例
+// @return ILoadBalance 负载均衡接口
+//
+func NewRoundRobinWeightBalance() ILoadBalance {
+	weightRoundRobinBalanceOnce.Do(func() {
+		weightRoundRobinBalanceInstance = &weightRoundRobinBalance{}
+	})
+	return weightRoundRobinBalanceInstance
+}
+
+//
 // DoBalance
 // @Description: 加权轮询
-// @receiver r WeightRoundRobinBalance
+// @receiver r weightRoundRobinBalance
 // @param instances 实例
 // @return *common.ServiceInstance 返回实例
 // @return error 错误
 //
-func (r *WeightRoundRobinBalance) DoBalance(instances []*common.ServiceInstance,
+func (r *weightRoundRobinBalance) DoBalance(instances []*common.ServiceInstance,
 	_ ...string) (*common.ServiceInstance, error) {
 	lens := len(instances)
 	if lens == 0 {
@@ -42,11 +65,11 @@ func (r *WeightRoundRobinBalance) DoBalance(instances []*common.ServiceInstance,
 //
 // getInstance
 // @Description: 获取实例
-// @receiver r WeightRoundRobinBalance
+// @receiver r weightRoundRobinBalance
 // @param instances 实例
 // @return *common.ServiceInstance 实例
 //
-func (r *WeightRoundRobinBalance) getInstance(instances []*common.ServiceInstance) *common.ServiceInstance {
+func (r *weightRoundRobinBalance) getInstance(instances []*common.ServiceInstance) *common.ServiceInstance {
 	gcd := getGCD(instances)
 	for {
 		r.Index = (r.Index + 1) % int64(len(instances))

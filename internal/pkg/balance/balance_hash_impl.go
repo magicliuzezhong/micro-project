@@ -12,13 +12,35 @@ import (
 	"hash/crc32"
 	"micro-project/internal/pkg/common"
 	"micro-project/internal/pkg/util"
+	"sync"
 )
 
 //
 // HashBalance
 // @Description: hash
 //
-type HashBalance struct {
+type hashBalance struct{}
+
+//
+// @Description: 用于单例模式
+//
+var hashBalanceOnce sync.Once
+
+//
+// @Description: hashBalance实例
+//
+var hashBalanceInstance *hashBalance
+
+//
+// NewHashBalance
+// @Description: 创建hashBalance实例
+// @return ILoadBalance 负载均衡接口
+//
+func NewHashBalance() ILoadBalance {
+	hashBalanceOnce.Do(func() {
+		hashBalanceInstance = &hashBalance{}
+	})
+	return hashBalanceInstance
 }
 
 //
@@ -29,7 +51,7 @@ type HashBalance struct {
 // @return *common.ServiceInstance 返回实例
 // @return error 错误
 //
-func (r HashBalance) DoBalance(instances []*common.ServiceInstance, _ ...string) (*common.ServiceInstance, error) {
+func (r hashBalance) DoBalance(instances []*common.ServiceInstance, _ ...string) (*common.ServiceInstance, error) {
 	var localIp = util.GetLocalIp()
 	if localIp == "" {
 		return nil, errors.New("获取本地ip失败")
@@ -45,8 +67,4 @@ func (r HashBalance) DoBalance(instances []*common.ServiceInstance, _ ...string)
 	var instance = instances[index]
 	instance.CallTimes++
 	return instance, nil
-}
-
-func (r HashBalance) DoBalance1(name string) string {
-	return "a"
 }

@@ -13,18 +13,38 @@ import (
 	"sync"
 )
 
+//
+// Application
+// @Description: application配置文件
+//
 type Application struct {
-	Server     Server     `yaml:"server"`
-	ConsulConf ConsulConf `yaml:"consul"`
-	JeagerConf JeagerConf `yaml:"jeager"`
-	DBInfo     DBInfo     `yaml:"db"`
+	Server       Server       `yaml:"server"`
+	DiscoverConf DiscoverConf `yaml:"discover"`
+	JeagerConf   JeagerConf   `yaml:"jeager"`
+	DBInfo       DBInfo       `yaml:"db"`
 }
 
+//
+// Server
+// @Description: 服务
+//
 type Server struct {
 	Port       string `yaml:"port"`
 	ServerName string `yaml:"server_name"`
 }
 
+//
+// DiscoverConf
+// @Description: 服务发现配置
+//
+type DiscoverConf struct {
+	ConsulConf ConsulConf `yaml:"consul"`
+}
+
+//
+// ConsulConf
+// @Description:  consul配置
+//
 type ConsulConf struct {
 	Ip     string
 	Port   string
@@ -67,6 +87,11 @@ var application Application
 
 var readConfigOnce sync.Once
 
+//
+// GetApplication
+// @Description: 获取配置信息
+// @return Application 应用
+//
 func GetApplication() Application {
 	readConfigOnce.Do(func() {
 		// 加载文件

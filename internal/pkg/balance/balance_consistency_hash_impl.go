@@ -20,12 +20,20 @@ import (
 // @Description: 一致性hash负载均衡实现
 //
 type consistencyHashBalance struct {
-	hashRingMap map[string]*HashRing                          //hash环映射
+	hashRingMap map[string]*hashRing                          //hash环映射
 	nodeMap     map[string]map[string]*common.ServiceInstance //快速映射具体实例
 }
 
+//
+// onceConsistencyHashBalance
+// @Description: 一致性hash负载均衡once
+//
 var onceConsistencyHashBalance sync.Once
 
+//
+// balance
+// @Description: 具体实例
+//
 var balance *consistencyHashBalance
 
 //
@@ -36,7 +44,7 @@ var balance *consistencyHashBalance
 func NewConsistencyHashBalance() ILoadBalance {
 	onceConsistencyHashBalance.Do(func() {
 		balance = &consistencyHashBalance{
-			hashRingMap: make(map[string]*HashRing),
+			hashRingMap: make(map[string]*hashRing),
 			nodeMap:     make(map[string]map[string]*common.ServiceInstance),
 		}
 	})
@@ -63,12 +71,12 @@ func (c *consistencyHashBalance) DoBalance(instances []*common.ServiceInstance,
 	var key = keys[1]
 	var insLen = len(instances)
 	if _, ok := c.hashRingMap[serviceName]; !ok { //如果不存在那么进行实例化
-		c.hashRingMap[serviceName] = newHashRing(make([]string, 0), 32)
+		c.hashRingMap[serviceName] = newhashRing(make([]string, 0), 32)
 	}
 	if _, ok := c.nodeMap[serviceName]; !ok { //如果node不存在，创建一个
 		c.nodeMap[serviceName] = make(map[string]*common.ServiceInstance)
 	}
-	if insLen == 0 { //传入的实例为空，清空HashRing的数据
+	if insLen == 0 { //传入的实例为空，清空hashRing的数据
 		delete(c.nodeMap, serviceName)
 		delete(c.hashRingMap, serviceName)
 		return nil, errors.New("传入实例为空")
@@ -87,7 +95,7 @@ func (c *consistencyHashBalance) DoBalance(instances []*common.ServiceInstance,
 		}
 		for _, instance := range instances {
 			var url = instance.GetUrl()
-			if _, ok := originalNoeMap[url]; ok { //如果实例不存在，那么说明是新增的节点
+			if _, ok := originalNoeMap[url]; !ok { //如果实例不存在，那么说明是新增的节点
 				addNode = append(addNode, instance)
 			}
 		}
@@ -122,7 +130,11 @@ func (c *consistencyHashBalance) DoBalance(instances []*common.ServiceInstance,
 	return nil, errors.New("实例无法找到")
 }
 
-type HashRing struct {
+//
+// hashRing
+// @Description: hash环
+//
+type hashRing struct {
 	replicateCount int // 虚拟节点.
 	nodes          map[uint32]string
 	sortedNodes    []uint32
@@ -134,7 +146,7 @@ type HashRing struct {
 // @receiver hr hash环
 // @param masterNode 入参：服务器地址
 //
-func (hr *HashRing) addNode(masterNode string) {
+func (hr *hashRing) addNode(masterNode string) {
 	// 为每台服务器生成数量为 replicateCount-1 个虚拟节点
 	// 并将其与服务器的实际节点一同添加到哈希环中
 	for i := 0; i < hr.replicateCount; i++ {
@@ -151,7 +163,13 @@ func (hr *HashRing) addNode(masterNode string) {
 	})
 }
 
-func (hr *HashRing) addNodes(masterNodes []string) {
+//
+// addNodes
+// @Description: 批量添加节点，实际还是循环调用的添加节点
+// @receiver hr hash环
+// @param masterNodes 节点
+//
+func (hr *hashRing) addNodes(masterNodes []string) {
 	if len(masterNodes) > 0 {
 		for _, node := range masterNodes {
 			hr.addNode(node)
@@ -159,41 +177,48 @@ func (hr *HashRing) addNodes(masterNodes []string) {
 	}
 }
 
-func (hr *HashRing) removeNode(masterNode string) {
-
+//
+// removeNode
+// @Description: 删除节点
+// @receiver hr hash环
+// @param masterNode 节点
+//
+func (hr *hashRing) removeNode(masterNode string) {
 	for i := 0; i < hr.replicateCount; i++ {
 		key := hr.hashKey(strconv.Itoa(i) + masterNode)
 		delete(hr.nodes, key)
-
 		if success, index := hr.getIndexForKey(key); success {
 			hr.sortedNodes = append(hr.sortedNodes[:index], hr.sortedNodes[index+1:]...)
 		}
 	}
 }
 
-func (hr *HashRing) getNode(key string) string {
+//
+// getNode
+// @Description: 获取节点
+// @receiver hr hash环
+// @param key key
+// @return string 获取到的环节点
+//
+func (hr *hashRing) getNode(key string) string {
 	if len(hr.nodes) == 0 {
 		return ""
 	}
 	hashKey := hr.hashKey(key)
 	nodes := hr.sortedNodes
 	masterNode := hr.nodes[nodes[0]]
-
 	for _, node := range nodes {
 		if hashKey < node {
 			masterNode = hr.nodes[node]
 			break
 		}
 	}
-
 	return masterNode
 }
 
-func (hr *HashRing) getIndexForKey(key uint32) (bool, int) {
-
+func (hr *hashRing) getIndexForKey(key uint32) (bool, int) {
 	index := -1
 	success := false
-
 	for i, v := range hr.sortedNodes {
 		if v == key {
 			index = i
@@ -201,17 +226,23 @@ func (hr *HashRing) getIndexForKey(key uint32) (bool, int) {
 			break
 		}
 	}
-
 	return success, index
 }
 
-func (hr *HashRing) hashKey(key string) uint32 {
+//
+// hashKey
+// @Description: 获取hash值
+// @receiver hr hash环
+// @param key 待hash的key
+// @return uint32 hashcode
+//
+func (hr *hashRing) hashKey(key string) uint32 {
 	scratch := []byte(key)
 	return crc32.ChecksumIEEE(scratch)
 }
 
-func newHashRing(nodes []string, replicateCount int) *HashRing {
-	hr := new(HashRing)
+func newhashRing(nodes []string, replicateCount int) *hashRing {
+	hr := new(hashRing)
 	hr.replicateCount = replicateCount
 	hr.nodes = make(map[uint32]string)
 	hr.sortedNodes = []uint32{}

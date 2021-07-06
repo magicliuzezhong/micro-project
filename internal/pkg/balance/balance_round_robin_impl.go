@@ -9,18 +9,34 @@ package balance
 import (
 	"fmt"
 	"micro-project/internal/pkg/common"
+	"sync"
 )
 
 //
-// RoundRobinBalance
+// roundRobinBalance
 // @Description: 轮询
 //
-type RoundRobinBalance struct {
+type roundRobinBalance struct {
 	currentIndex int
 }
 
+//
+// @Description: 单例
+//
+var roundRobinBalanceOnce sync.Once
+
+//
+// @Description: 实例
+//
+var roundRobinBalanceInstance *roundRobinBalance
+
+//
+// NewRoundRobinBalance
+// @Description: 获取轮询实例
+// @return ILoadBalance 负载均衡接口
+//
 func NewRoundRobinBalance() ILoadBalance {
-	return &RoundRobinBalance{
+	return &roundRobinBalance{
 		currentIndex: 0,
 	}
 }
@@ -28,12 +44,12 @@ func NewRoundRobinBalance() ILoadBalance {
 //
 // DoBalance
 // @Description: 轮询
-// @receiver r RoundRobinBalance
+// @receiver r roundRobinBalance
 // @param instances 实例
 // @return *common.ServiceInstance 返回实例
 // @return error 错误
 //
-func (r *RoundRobinBalance) DoBalance(instances []*common.ServiceInstance,
+func (r *roundRobinBalance) DoBalance(instances []*common.ServiceInstance,
 	_ ...string) (*common.ServiceInstance, error) {
 	lens := len(instances)
 	if lens == 0 {

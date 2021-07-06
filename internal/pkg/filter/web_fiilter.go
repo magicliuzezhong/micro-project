@@ -13,7 +13,7 @@ import (
 	"micro-project/internal/pkg/common"
 )
 
-var rateLimiter = rate.NewLimiter(1, 5)
+var rateLimiter = rate.NewLimiter(5000, 20000)
 
 //
 // LimiterFilter
