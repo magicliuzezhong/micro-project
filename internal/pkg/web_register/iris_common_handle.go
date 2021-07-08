@@ -68,7 +68,7 @@ func customRecover(ctx context.Context) {
 			}
 			errMsg := fmt.Sprintf("错误信息: %s", err)
 			// when stack finishes
-			logMessage := fmt.Sprintf("从错误中回复：('%s')\n", ctx.HandlerName())
+			logMessage := fmt.Sprintf("从错误中恢复：('%s')\n", ctx.HandlerName())
 			logMessage += errMsg + "\n"
 			logMessage += fmt.Sprintf("\n%s", stacktrace)
 			// 打印错误日志

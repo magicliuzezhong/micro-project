@@ -16,7 +16,6 @@ import (
 	"log"
 	"micro-project/internal/pkg/util"
 	"os"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -26,11 +25,11 @@ var dbs *gorm.DB
 // mysql初始化错误信息
 var dbInitError error
 
-// 用于mysql进行中途切换时暂停探活
-var exitExploreCh = make(chan bool, 1)
+//暂停管道
+var waitSendChannel = make(chan bool, 1)
 
-// 用于mysql切换完成后激活探活程序
-var waitExploreCh = make(chan bool, 1)
+//恢复管道
+var resumeSendChannel = make(chan bool, 1)
 
 // 初始化mysql独占锁，主要用于防止多链路切换时切换异常的发生
 var initMysqlMutex sync.Mutex
@@ -69,9 +68,9 @@ func ResetMysqlDB() {
 func mysqlExplore() {
 	for {
 		select {
-		case <-exitExploreCh:
-			<-waitExploreCh
-		case <-time.After(time.Second * 10):
+		case <-waitSendChannel:
+			<-resumeSendChannel
+		case <-time.After(time.Second * 60):
 			//此处需要进行加锁操作，因为如果mysql正在进行切换的时候dbs被置为nil了的话，此处会出现报错的问题
 			initMysqlMutex.Lock()
 			if dbs != nil {
@@ -97,15 +96,21 @@ func mysqlExplore() {
 func initMysqlDB() {
 	initMysqlMutex.Lock()
 	defer initMysqlMutex.Unlock()
-	if len(exitExploreCh) == 0 {
-		exitExploreCh <- true
+	if len(resumeSendChannel) == 1 {
+		<-resumeSendChannel //如果没有等待了要先释放，防止出现刚暂停又恢复
+	}
+	if len(waitSendChannel) == 0 {
+		waitSendChannel <- true //程序阻塞
 	}
 	dbs = nil
 	dbInitError = nil
 	var mysqlInfo = util.GetApplication().DBInfo.Mysql
 	if mysqlInfo.Url == "" { //url不存在，说明需要进行初始化
-		if len(exitExploreCh) == 0 { //不存在那么暂停探活协程
-			exitExploreCh <- true
+		if len(resumeSendChannel) == 1 {
+			<-resumeSendChannel //如果没有等待了要先释放，防止出现刚暂停又恢复
+		}
+		if len(waitSendChannel) == 0 {
+			waitSendChannel <- true //程序阻塞
 		}
 		return
 	}
@@ -150,21 +155,22 @@ func initMysqlDB() {
 		return
 	}
 	var defaultMaxIdleConn = 10
-	maxIdleConn, err := strconv.Atoi(mysqlInfo.MaxIdleConn)
-	if err != nil {
-		defaultMaxIdleConn = maxIdleConn
+	if mysqlInfo.MaxIdleConn > 0 {
+		defaultMaxIdleConn = mysqlInfo.MaxIdleConn
 	}
 	var defaultMaxOpenConn = 100
-	maxOpenConn, err := strconv.Atoi(mysqlInfo.MaxOpenConn)
-	if err != nil {
-		defaultMaxOpenConn = maxOpenConn
+	if mysqlInfo.MaxOpenConn > 0 {
+		defaultMaxOpenConn = mysqlInfo.MaxOpenConn
 	}
 	sqlDB.SetMaxIdleConns(defaultMaxIdleConn) //设置空闲连接池中连接的最大数量
 	sqlDB.SetMaxOpenConns(defaultMaxOpenConn) //设置打开数据库连接的最大数量。
 	sqlDB.SetConnMaxLifetime(time.Hour)       //设置了连接可复用的最大时间。
 	dbs = db
-	dbInitError = nil            //初始化错误信息设置为空，因为已经设置完成了并且没有出错
-	if len(waitExploreCh) == 0 { //激活探活协程
-		waitExploreCh <- true
+	dbInitError = nil //初始化错误信息设置为空，因为已经设置完成了并且没有出错
+	if len(resumeSendChannel) == 0 {
+		resumeSendChannel <- true      //恢复探活程序
+		if len(waitSendChannel) == 1 { //进行恢复后要将暂停逻辑取消掉，防止出现刚恢复又暂停的情况
+			<-waitSendChannel
+		}
 	}
 }

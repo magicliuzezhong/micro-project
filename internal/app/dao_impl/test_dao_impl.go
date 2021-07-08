@@ -33,7 +33,8 @@ func NewTestDao() dao2.ITestDao {
 }
 
 func (service testDao) GetName(id string) string {
-	var conn = mysql.GetConn()
+	var conn = mysql.GetConn().Begin()
+
 	fmt.Println(conn)
 	var t1 = T1{}
 	conn.Table("t1").First(&t1, "a=1")
@@ -43,6 +44,11 @@ func (service testDao) GetName(id string) string {
 		B: "测试两下",
 	}
 	conn.Create(t1Data)
+	var a = true
+	if a {
+		conn.Rollback()
+		panic("测试一下")
+	}
 	var datas = []T1{
 		T1{A: 2, B: "bbb"},
 		T1{A: 3, B: "bbb1"},

@@ -52,12 +52,9 @@ func (c TestController) GetName() {
 		//body, _ := ioutil.ReadAll(resp.Body)
 		//fmt.Println(string(body))
 	}
-	panic("测试异常")
 
-	//var name = services.GetName("陆小凤")
-	//fmt.Println(name)
-	//return name
-	c.Ctx.Values().Set("val", "测试一下")
+	var name = services.GetName("陆小凤")
+	c.Ctx.Values().Set("val", name)
 }
 
 func (c TestController) GetAge() {

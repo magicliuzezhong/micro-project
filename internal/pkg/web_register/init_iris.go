@@ -7,6 +7,7 @@
 package web_register
 
 import (
+	"fmt"
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/context"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -43,12 +44,12 @@ func InitWeb(exitCallback func(), extend func(application *iris.Application)) {
 		}
 	})
 
-	var err = app.Run(iris.Addr(":"+util.GetApplication().Server.Port),
+	var err = app.Run(iris.Addr(fmt.Sprintf(":%d", util.GetApplication().Server.Port)),
 		iris.WithoutServerError(iris.ErrServerClosed),
 		iris.WithOptimizations,
 		iris.WithCharset("UTF-8"),
 	)
 	if err != nil {
-		panic("====微服务启动异常====")
+		panic("====微服务启动异常====" + err.Error())
 	}
 }

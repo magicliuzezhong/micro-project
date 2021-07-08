@@ -7,6 +7,7 @@
 package discover
 
 import (
+	"fmt"
 	"github.com/hashicorp/consul/api"
 	"github.com/hashicorp/consul/api/watch"
 	"github.com/hashicorp/go-uuid"
@@ -43,7 +44,7 @@ func NewConsulDiscoverClient(host string, port int) *ConsulDiscoverClient {
 func (consulClient *ConsulDiscoverClient) Register(svcHost string, port int, svcName string,
 	weight int, meta map[string]string, tags []string) bool {
 	var application = util.GetApplication()
-	var checkUrl = "http://" + util.GetLocalIp() + ":" + application.Server.Port + "/health"
+	var checkUrl = fmt.Sprintf("http://%s:%d/health", util.GetLocalIp(), application.Server.Port)
 	// 1. 构建服务实例元数据
 	serviceRegistration := &api.AgentServiceRegistration{
 		ID:      consulClient.InstanceId,

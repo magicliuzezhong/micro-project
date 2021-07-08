@@ -11,16 +11,15 @@ import (
 	"github.com/opentracing/opentracing-go"
 	jaegerConfig "github.com/uber/jaeger-client-go/config"
 	"micro-project/internal/pkg/util"
-	"strconv"
 )
 
 var (
-	tracer         opentracing.Tracer                                   //tracer
-	serviceName    = util.GetApplication().Server.ServerName            //服务名称
-	jeagerHostPort = util.GetApplication().JeagerConf.Url               //jeager服务端地址
-	jeagerEnabled  = util.GetApplication().JeagerConf.Enabled == "true" //是否启用jeager
-	jeagerType     = util.GetApplication().JeagerConf.Type              // 采样类型 const：固定采样
-	jeagerParam    = util.GetApplication().JeagerConf.Param             // 1:全采样，0:不采样
+	tracer         opentracing.Tracer                         //tracer
+	serviceName    = util.GetApplication().Server.ServerName  //服务名称
+	jeagerHostPort = util.GetApplication().JeagerConf.Url     //jeager服务端地址
+	jeagerEnabled  = util.GetApplication().JeagerConf.Enabled //是否启用jeager
+	jeagerType     = util.GetApplication().JeagerConf.Type    // 采样类型 const：固定采样
+	jeagerParam    = util.GetApplication().JeagerConf.Param   // 1:全采样，0:不采样
 )
 
 //
@@ -45,11 +44,9 @@ func initTrace(serviceName string, jaegerHostPort string) {
 		localJeagerType = jeagerType
 	}
 	var localJeagerParam float64 = 1 //全采样
-	if jeagerParam == "1" || jeagerParam == "0" {
-		param, _ := strconv.Atoi(jeagerParam)
-		localJeagerParam = float64(param)
+	if jeagerParam == 0 || jeagerParam == 1 {
+		localJeagerParam = float64(jeagerParam)
 	}
-
 	var cfg = &jaegerConfig.Configuration{
 		ServiceName: serviceName,
 		Sampler: &jaegerConfig.SamplerConfig{
