@@ -22,6 +22,19 @@ db:
     max_idle_conn: 10 #最大闲置连接
     max_open_conn: 100 #最大打开连接
     log_path: ./log/common/mysql.log #执行sql后的日志记录路径
-  redis: #暂时没有使用哦
-    url: 127.0.0.1:2379  #暂时没有使用哦
-    password: 1234.abcd #暂时没有使用哦
+  redis:
+    redis_alone: #单机版
+      enabled: true #是否启用，true：启用，false：不启用
+      url: 10.0.0.244
+      port: 6382
+      password: ""
+    redis_cluster: #集群版
+      enabled: true #是否启用，true：启用，false：不启用
+      password: ""
+      redis_cluster_info:
+        - { url: 10.0.0.244, port: 6381 }
+        - { url: 10.0.0.244, port: 6382 }
+        - { url: 10.0.0.244, port: 6383 }
+        - { url: 10.0.0.244, port: 6384 }
+        - { url: 10.0.0.244, port: 6385 }
+        - { url: 10.0.0.244, port: 6386 }

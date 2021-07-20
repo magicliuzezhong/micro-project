@@ -26,10 +26,10 @@ var dbs *gorm.DB
 var dbInitError error
 
 //暂停管道
-var waitSendChannel = make(chan bool, 1)
+var waitSendChannel = make(chan struct{}, 1)
 
 //恢复管道
-var resumeSendChannel = make(chan bool, 1)
+var resumeSendChannel = make(chan struct{}, 1)
 
 // 初始化mysql独占锁，主要用于防止多链路切换时切换异常的发生
 var initMysqlMutex sync.Mutex
@@ -100,7 +100,7 @@ func initMysqlDB() {
 		<-resumeSendChannel //如果没有等待了要先释放，防止出现刚暂停又恢复
 	}
 	if len(waitSendChannel) == 0 {
-		waitSendChannel <- true //程序阻塞
+		waitSendChannel <- struct{}{} //程序阻塞
 	}
 	dbs = nil
 	dbInitError = nil
@@ -110,7 +110,7 @@ func initMysqlDB() {
 			<-resumeSendChannel //如果没有等待了要先释放，防止出现刚暂停又恢复
 		}
 		if len(waitSendChannel) == 0 {
-			waitSendChannel <- true //程序阻塞
+			waitSendChannel <- struct{}{} //程序阻塞
 		}
 		return
 	}
@@ -168,8 +168,8 @@ func initMysqlDB() {
 	dbs = db
 	dbInitError = nil //初始化错误信息设置为空，因为已经设置完成了并且没有出错
 	if len(resumeSendChannel) == 0 {
-		resumeSendChannel <- true      //恢复探活程序
-		if len(waitSendChannel) == 1 { //进行恢复后要将暂停逻辑取消掉，防止出现刚恢复又暂停的情况
+		resumeSendChannel <- struct{}{} //恢复探活程序
+		if len(waitSendChannel) == 1 {  //进行恢复后要将暂停逻辑取消掉，防止出现刚恢复又暂停的情况
 			<-waitSendChannel
 		}
 	}

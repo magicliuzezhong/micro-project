@@ -46,11 +46,25 @@ type Application struct {
 			MaxOpenConn int    `yaml:"max_open_conn"`
 			LogPath     string `yaml:"log_path"`
 		}
-		redis struct {
-			Url      string `yaml:"url"`
-			Password string `yaml:"password"`
-		}
+		Redis struct {
+			RedisAlone struct {
+				Enabled  bool   `yaml:"enabled"`
+				Url      string `yaml:"url"`
+				Port     int    `yaml:"port"`
+				Password string `yaml:"password"`
+			} `yaml:"redis_alone"`
+			RedisCluster struct {
+				Enabled          bool               `yaml:"enabled"`
+				Password         string             `yaml:"password"`
+				RedisClusterInfo []RedisClusterInfo `yaml:"redis_cluster_info"`
+			} `yaml:"redis_cluster"`
+		} `yaml:"redis"`
 	} `yaml:"db"`
+}
+
+type RedisClusterInfo struct {
+	Url  string `yaml:"url"`
+	Port int    `yaml:"port"`
 }
 
 var application Application

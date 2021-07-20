@@ -12,6 +12,7 @@ import (
 	"micro-project/internal/app/service_impl"
 	"micro-project/internal/pkg/balance"
 	"micro-project/internal/pkg/common"
+	"micro-project/internal/pkg/db/redis"
 	"micro-project/internal/pkg/discover"
 )
 
@@ -58,16 +59,22 @@ func (c TestController) GetName() {
 }
 
 func (c TestController) GetAge() {
-	var age = services.GetAge("18")
 	defer c.Ctx.Next()
-	c.Ctx.Values().Set("val", Test{
-		Age: age,
-	})
 
+	var client = redis.GetRedisClient()
+	var cmd1 = client.Get("testKey")
+	if cmd1.Err() == nil {
+		fmt.Println(cmd1.String())
+	}
+
+	var cluster = redis.GetRedisCluster()
+
+	//var cmd1 = client.Set("testKey", "liuzezhongTest", 0)
+	var cmd = cluster.Get("testKey")
 	c.Ctx.Values().Set("val", common.ResponseResult{
 		Status: 200,
 		Msg:    "我个人测试的请求",
-		Data:   age,
+		Data:   cmd.String(),
 	})
 }
 
